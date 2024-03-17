@@ -1,3 +1,3 @@
 # swirl
 
-CURL but better
+A better CURL than CURL, and a better WGET than WGET.
