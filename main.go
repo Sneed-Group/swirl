@@ -2,28 +2,39 @@ package main
 
 import (
 	"fmt"
+	"flag"
 	"io/ioutil"
 	"net/http"
-	"os"
 )
 
 func main() {
-	// Check for URL argument
-	if (len(os.Args) < 2 || os.Args[1] == "help") {
-		fmt.Println("Swirl 1.0")
-		fmt.Println("------------------")
-		fmt.Println("Usage: swirl <url>")
+	// Define flags
+	urlPtr := flag.String("url", "", "URL of the page to fetch (required)")
+	methodPtr := flag.String("X", "GET", "HTTP method for the request (default: GET)")
+	outputPtr := flag.String("o", "", "Output file path (default: print to console)")
+	followRedirectsPtr := flag.Bool("L", false, "Follow HTTP redirects (default: false)")
+
+	flag.Parse()
+
+	// Check for required flag (-url)
+	if *urlPtr == "" {
+		fmt.Println("Error: -url flag is required")
+		flag.PrintDefaults()
 		return
 	}
 
-	// Get URL from argument
-	url := os.Args[1]
-
 	// Create an HTTP client
-	client := &http.Client{}
+	client := &http.Client{
+        CheckRedirect: func(req *http.Request, via []*http.Request) error {
+            if *followRedirectsPtr { // Use the boolean variable
+                return nil
+            }
+            return fmt.Errorf("too many redirects") // Or another error
+        },
+    }
 
 	// Create a new request
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(*methodPtr, *urlPtr, nil)
 	if err != nil {
 		fmt.Println("Error creating request:", err)
 		return
@@ -51,6 +62,17 @@ func main() {
 		return
 	}
 
-	// Print the page content
-	fmt.Println(string(body))
+	// Handle output
+	if *outputPtr != "" {
+		// Write content to file
+		err = ioutil.WriteFile(*outputPtr, body, 0644)
+		if err != nil {
+			fmt.Println("Error writing to file:", err)
+			return
+		}
+		fmt.Println("Content saved to:", *outputPtr)
+	} else {
+		// Print content to console
+		fmt.Println(string(body))
+	}
 }
